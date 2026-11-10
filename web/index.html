@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f4ee">
+  <meta name="description" content="小奶瓶，记录每一顿实际喝下的奶量。">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/theme.js"></script>
+  <title>小奶瓶</title>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="shell" id="app">
+    <header class="topbar">
+      <a class="brand" id="brand-link" href="/" aria-label="小奶瓶首页"><span class="brand-mark">奶</span><span class="brand-copy"><span id="brand-title">小奶瓶</span><small>每一顿，家人一起记。</small></span></a>
+      <div class="header-actions"><button class="icon-button" id="theme-button" aria-label="显示模式：系统" title="显示模式"><span id="theme-icon" aria-hidden="true">◐</span></button><button class="icon-button" id="share-button" aria-label="分享家人二维码"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM19 13h2v3h-2zM13 19h3v2h-3z" fill="currentColor"/></svg></button></div>
+    </header>
+    <div class="connection hidden" id="connection" role="status"></div>
+    <main id="main-content">
+      <section class="greeting"><div><p class="eyebrow" id="today-label">今天</p><h1>好好喝奶，慢慢长大。</h1></div><span class="little-flower" aria-hidden="true">✳</span></section>
+      <div class="workspace">
+        <aside class="overview">
+          <section class="summary-card" aria-label="当日奶量统计">
+            <div class="card-heading"><span id="summary-label">今日已喝</span><span class="pill" id="count-pill">0 顿</span></div>
+            <div class="total"><strong id="total">—</strong><span>毫升</span></div>
+            <div class="bottle-art" aria-hidden="true"><svg viewBox="0 0 92 132"><path d="M35 24V15c0-15 22-15 22 0v9" fill="#efbdb0" stroke="#624c43" stroke-width="2.5"/><path d="M26 25h40v14H26z" fill="#e7a28f" stroke="#624c43" stroke-width="2.5"/><path d="M27 39h38l8 18v58a10 10 0 0 1-10 10H29a10 10 0 0 1-10-10V57z" fill="#fffaf2" stroke="#624c43" stroke-width="2.5"/><path d="M22 76c12-6 30 7 48 0v38a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8z" fill="#f2d797"/><path d="M57 56h10m-10 13h10m-10 13h10m-10 13h10" stroke="#a99073" stroke-width="2.5" stroke-linecap="round"/><path d="M29 53v15" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></div>
+            <div class="summary-footer">每一顿，都被好好记住</div>
+          </section>
+          <section class="last-card"><span class="clock" aria-hidden="true">◷</span><div><p>上一次喝奶</p><strong id="last-time">还没有记录</strong><small id="last-detail">记下第一顿吧</small></div></section>
+          <p class="gentle-note">记下实际喝完的奶量，<br>泡奶量和剩奶量不用相加。</p>
+          <div class="desktop-add"><button class="primary add-button"><span>＋</span> 记一顿奶</button></div>
+        </aside>
+        <section class="journal" aria-label="喝奶记录">
+          <div class="section-heading"><h2 id="list-title">今天的每一顿</h2><button class="text-button" id="history-button">看历史 <span aria-hidden="true">↗</span></button></div>
+          <section class="history-panel hidden" id="history-panel" aria-label="选择记录日期">
+            <div class="date-controls"><button class="small-button" id="previous-day" aria-label="前一天">‹</button><label class="date-label"><span>记录日期</span><input type="date" id="view-date" aria-label="查看日期"></label><button class="small-button" id="next-day" aria-label="后一天">›</button><button class="text-button" id="back-today">今天</button></div>
+            <div class="day-list" id="day-list"></div>
+          </section>
+          <div id="records" class="records" aria-live="polite"><div class="loading">正在打开小奶瓶…</div></div>
+          <footer class="journal-footer"><span>家人的记录会自动更新</span><button class="text-button" id="refresh-button">刷新</button></footer>
+          <section class="milk-charts" aria-label="奶量曲线">
+            <article class="chart-card"><div class="chart-heading"><h3 id="daily-chart-title">每日喝奶曲线</h3><span id="daily-chart-date"></span></div><p class="chart-subtitle">每一顿的实际喝奶量</p><div id="daily-chart" class="chart-plot"></div><p class="chart-readout" id="daily-chart-value" aria-live="polite"></p></article>
+            <article class="chart-card"><div class="chart-heading"><h3 id="trend-chart-title">近30天每日总奶量</h3><span id="trend-chart-range"></span></div><p class="chart-subtitle" id="trend-chart-summary"></p><div id="trend-chart" class="chart-plot"></div><p class="chart-readout" id="trend-chart-value" aria-live="polite"></p><p class="chart-footnote">点曲线查看数值 · 空缺表示暂无记录</p><details class="chart-details"><summary>查看每日数值</summary><div class="chart-table-scroll"><table><caption class="sr-only">近30天每日喝奶总量与顿数</caption><thead><tr><th scope="col">日期</th><th scope="col">奶量</th><th scope="col">顿数</th></tr></thead><tbody id="trend-chart-table"></tbody></table></div></details></article>
+          </section>
+          <div class="tools"><a href="/api/export.csv" download="小奶瓶-喝奶记录.csv">导出全部记录</a><span>·</span><a href="/api/backup" download="小奶瓶-数据备份.sqlite3">下载数据备份</a></div>
+        </section>
+      </div>
+    </main>
+    <section id="scan-screen" class="scan-screen hidden"><span class="brand-mark">奶</span><h1>小奶瓶</h1><p>请连上家里的 Wi-Fi，<br>扫描家里的二维码打开。</p><button class="secondary" id="retry-auth">重新检查</button></section>
+    <div class="mobile-add" id="mobile-add"><button class="primary add-button"><span>＋</span> 记一顿奶</button></div>
+    <footer class="app-footer"><span id="family-caption">宝宝的小日常</span><span>♡</span> 家人一起照顾<button id="settings-button" class="text-button hidden" type="button">修改昵称</button></footer>
+  </div>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form">
+      <div class="dialog-heading"><div><p class="eyebrow">给宝宝的一点专属</p><h2 id="settings-title">宝宝叫什么昵称？</h2></div><button type="button" class="close-button" id="settings-dismiss" aria-label="关闭昵称设置">×</button></div>
+      <p class="settings-description">记下一个亲切的称呼，让每一顿奶都有专属的小记录。</p>
+      <label class="field-label" for="baby-name">宝宝昵称 <span class="optional-label">选填</span></label>
+      <input id="baby-name" class="name-input" type="text" maxlength="20" autocomplete="off" placeholder="例如：小米" aria-describedby="name-hint name-preview">
+      <p id="name-preview" class="name-preview" aria-live="polite">小奶瓶</p>
+      <p id="name-hint" class="settings-hint">最多20字，家人的设备会一起更新。之后可在页面底部修改；留空则显示“小奶瓶”。</p>
+      <p id="settings-error" class="form-error hidden" role="alert"></p>
+      <button type="submit" class="primary" id="settings-save">保存昵称</button>
+      <button type="button" class="text-button settings-skip" id="settings-skip">先跳过，用“小奶瓶”</button>
+    </form>
+  </dialog>
+
+  <dialog id="record-dialog" aria-labelledby="form-title">
+    <form id="record-form" novalidate>
+      <div class="dialog-heading"><div><p class="eyebrow" id="form-eyebrow">记下这一顿</p><h2 id="form-title">喝了多少奶？</h2></div><button type="button" class="close-button" data-close="record-dialog" aria-label="关闭记录窗口">×</button></div>
+      <label class="amount-label" for="amount">实际喝奶量</label>
+      <div class="amount-input"><input id="amount" name="amount" type="number" inputmode="numeric" min="1" max="1000" step="1" placeholder="150" required autocomplete="off"><span>毫升</span></div>
+      <div class="quick-amounts" aria-label="常用奶量"><button type="button" data-amount="120">120</button><button type="button" data-amount="150">150</button><button type="button" data-amount="180">180</button><button type="button" data-amount="210">210</button><button type="button" data-amount="240">240</button></div>
+      <div class="time-heading"><span class="field-label">喝奶时间</span><span id="time-preview" aria-live="polite">刚刚</span></div>
+      <div class="quick-times" role="group" aria-label="快捷选择喝奶时间"><button type="button" data-offset="0" aria-pressed="true">刚刚</button><button type="button" data-offset="5" aria-pressed="false">5分钟前</button><button type="button" data-offset="10" aria-pressed="false">10分钟前</button><button type="button" data-offset="30" aria-pressed="false">30分钟前</button></div>
+      <details id="manual-time"><summary>其他时间 <span>手动补记</span></summary><div class="manual-time-fields"><label class="manual-date">日期<input id="fed-date" type="date" aria-label="喝奶日期"></label><label class="manual-clock">几点几分<input id="fed-clock" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="1730" aria-label="喝奶时间（直接输入1730）" enterkeyhint="done" aria-describedby="manual-time-hint"></label></div><p class="manual-time-hint" id="manual-time-hint">直接输入 1730，就是 17:30。点进时间框即可覆盖原值。</p></details>
+      <fieldset class="caregivers"><legend>谁记的</legend><label><input type="radio" name="caregiver" value="妈妈"><span>妈妈</span></label><label><input type="radio" name="caregiver" value="姥姥"><span>姥姥</span></label><label><input type="radio" name="caregiver" value="爸爸" checked><span>爸爸</span></label></fieldset>
+      <details><summary>加一句备注 <span>选填</span></summary><label class="sr-only" for="note">备注</label><textarea id="note" maxlength="200" placeholder="比如：这顿喝得很香" rows="2"></textarea></details>
+      <p id="form-error" class="form-error hidden" role="alert"></p>
+      <button class="primary save-button" id="save-button" type="submit">保存这一顿</button>
+      <button class="delete-button hidden" id="delete-button" type="button">删除这条记录</button>
+      <p class="form-hint">只记实际喝下的奶量，记错了可以修改。</p>
+    </form>
+  </dialog>
+
+  <dialog id="share-dialog" aria-labelledby="share-title"><div class="dialog-heading"><div><p class="eyebrow">每一顿，家人一起记。</p><h2 id="share-title">扫码打开小奶瓶</h2></div><button class="close-button" data-close="share-dialog" aria-label="关闭二维码窗口">×</button></div><p class="share-description">手机连上家里的 Wi-Fi 后扫码。<br>可以把二维码贴在奶粉罐旁边。</p><div class="qr-box"><img id="share-qr" alt="小奶瓶家庭访问二维码" width="248" height="248"></div><a class="secondary download-qr" href="/api/qr.svg" download="小奶瓶二维码.svg">保存二维码</a><button class="text-button copy-link" id="copy-link">复制家庭访问链接</button><p id="share-message" role="status"></p></dialog>
+  <dialog id="theme-dialog" aria-labelledby="theme-title"><div class="dialog-heading"><div><p class="eyebrow">按你的习惯来</p><h2 id="theme-title">显示模式</h2></div><button class="close-button" data-close="theme-dialog" aria-label="关闭显示模式">×</button></div><div class="theme-options"><button data-theme-choice="light"><span aria-hidden="true">☀</span><strong>白天</strong><small>明亮清爽</small></button><button data-theme-choice="dark"><span aria-hidden="true">☾</span><strong>夜间</strong><small>柔和不刺眼</small></button><button data-theme-choice="system"><span aria-hidden="true">◐</span><strong>系统</strong><small>跟随手机设置</small></button></div><p class="form-hint">会记住这台设备的选择。</p></dialog>
+  <div class="toast hidden" id="toast" role="status"><span id="toast-text"></span><button id="undo-button" class="hidden">撤销删除</button></div>
+</body>
+</html>

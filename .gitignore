@@ -1,0 +1,32 @@
+# Family data and access credentials (including alternate data directories)
+data/
+config.json
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+backups/
+.env
+.env.*
+!.env.example
+
+# Local environments and generated files
+.venv/
+node_modules/
+dist/
+venv/
+runtime/
+__pycache__/
+*.py[cod]
+*.log
+*.pid
+*.zip
+.DS_Store
+
+# Screenshots and family QR codes require an explicit review before inclusion
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.svg
+!web/icon.svg
