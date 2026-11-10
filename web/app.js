@@ -15,8 +15,50 @@ async function api(path, options = {}) {
   if (!body.success) { const error = new Error(body.error?.message || '操作失败，请重试'); error.code=body.error?.code; if(response.status===401) showScan(); throw error; }
   return body.data;
 }
-function showScan() { $('main-content').classList.add('hidden'); $('mobile-add').classList.add('hidden'); $('share-button').classList.add('hidden'); $('settings-button').classList.add('hidden'); if($('settings-dialog').open)$('settings-dialog').close(); $('scan-screen').classList.remove('hidden'); }
+function showScan() { $('main-content').classList.add('hidden'); $('mobile-add').classList.add('hidden'); $('share-button').classList.add('hidden'); $('settings-button').classList.add('hidden'); $('caregivers-button').classList.add('hidden'); for(const id of ['settings-dialog','caregivers-dialog'])if($(id).open)$(id).close(); $('scan-screen').classList.remove('hidden'); }
 function babyTitle(name) { return name ? name+'的小奶瓶' : '小奶瓶'; }
+function applyCaregivers(options) {
+  const changed=state.caregiverOptions?.version!==options.version;
+  state.caregiverOptions=options;
+  $('caregivers-button').classList.remove('hidden');
+  if(changed&&$('record-dialog').open)renderCaregiverChoices();
+}
+function renderCaregiverChoices() {
+  const value=$('caregiver-name').value.trim(), names=state.caregiverOptions?.names||[];
+  const container=$('caregiver-options');container.replaceChildren();
+  for(const name of names){
+    const label=el('label'),radio=el('input');radio.type='radio';radio.name='caregiver';radio.value=name;radio.checked=name===value;
+    radio.addEventListener('change',()=>{$('caregiver-name').value=name;$('remember-caregiver').checked=false;$('remember-caregiver-label').classList.add('hidden');state.pending=null;});
+    label.append(radio,el('span',name));container.append(label);
+  }
+  const custom=Boolean(value&&!names.includes(value));
+  $('remember-caregiver-label').classList.toggle('hidden',!custom);
+  if(!custom)$('remember-caregiver').checked=false;
+}
+function caregiverError(message){$('caregivers-error').textContent=message;$('caregivers-error').classList.remove('hidden');}
+function caregiverRow(name){
+  const row=el('div',undefined,'caregiver-row'),input=el('input'),remove=el('button','移除','text-button');
+  input.type='text';input.value=name;input.maxLength=20;input.className='name-input';input.setAttribute('aria-label','常用记录人称呼');
+  remove.type='button';remove.setAttribute('aria-label','移除'+name);remove.addEventListener('click',()=>row.remove());row.append(input,remove);$('caregiver-rows').append(row);
+}
+function populateCaregivers(options){
+  state.caregiversVersion=options.version;$('caregiver-rows').replaceChildren();options.names.forEach(caregiverRow);$('new-caregiver').value='';$('caregivers-error').classList.add('hidden');
+}
+async function openCaregivers(){
+  try{const options=await api('/api/caregivers');applyCaregivers(options);populateCaregivers(options);$('caregivers-dialog').showModal();}catch(error){toast(error.message);}
+}
+async function saveCaregivers(event){
+  event.preventDefault();if(state.savingCaregivers)return;
+  if($('new-caregiver').value.trim()){caregiverError('新称呼还没添加，请先点“添加”，或清空输入后保存。');return;}
+  const names=[...document.querySelectorAll('#caregiver-rows input')].map(input=>input.value.trim());
+  if(!names.length||names.length>12||names.some(name=>!name||Array.from(name).length>20)||new Set(names).size!==names.length){caregiverError('请保留1至12位不同的记录人，每个称呼1至20字。');return;}
+  state.savingCaregivers=true;$('caregivers-save').disabled=true;$('caregivers-dismiss').disabled=true;
+  try{const options=await api('/api/caregivers',{method:'PUT',body:JSON.stringify({names,version:state.caregiversVersion})});applyCaregivers(options);$('caregivers-dialog').close();toast('常用名单已更新，历史记录保持原样');}
+  catch(error){
+    if(error.code==='CAREGIVERS_CONFLICT')try{const latest=await api('/api/caregivers');applyCaregivers(latest);populateCaregivers(latest);error.message='家人已更新名单，已加载最新设置。你可以继续修改或关闭。';}catch{}
+    caregiverError(error.message);
+  }finally{state.savingCaregivers=false;$('caregivers-save').disabled=false;$('caregivers-dismiss').disabled=false;}
+}
 function applySettings(settings) {
   state.settings=settings;
   const title=babyTitle(settings.baby_name);
@@ -73,6 +115,7 @@ function updateLatest() {
 function render(data) {
   state.snapshot=data;
   applySettings(data.settings);
+  applyCaregivers(data.caregivers);
   const isToday=state.day===today();
   $('today-label').textContent=(isToday?'今天 · ':'')+formatDay(state.day);
   $('summary-label').textContent=isToday?'今日已喝':'当日已喝'; $('list-title').textContent=isToday?'今天的每一顿':formatDay(state.day)+'的记录';
@@ -178,8 +221,9 @@ function openForm(record=null) {
   state.timeMode=record?'preserved':state.day===today()?'relative':'manual';state.offset=0;state.preservedTime=record?.fed_at || null;
   $('manual-time').open=state.timeMode==='manual';
   const storedPerson=record?.caregiver || recalled('milk-caregiver');
-  const person=record&&storedPerson==='家人'?'':['妈妈','姥姥','爸爸'].includes(storedPerson)?storedPerson:'爸爸';
-  for(const radio of document.querySelectorAll('[name="caregiver"]'))radio.checked=radio.value===person;
+  const names=state.caregiverOptions?.names||[];
+  const person=record?record.caregiver:storedPerson|| (names.includes('爸爸')?'爸爸':names[0]||'');
+  $('caregiver-name').value=person;$('remember-caregiver').checked=false;renderCaregiverChoices();
   $('note').value=record?.note || '';$('delete-button').classList.toggle('hidden',!record);updateChips();updateTime();$('record-dialog').showModal();
 }
 function normalizeClock(value) {
@@ -208,16 +252,16 @@ async function save(event) {
   event.preventDefault();if(state.busy)return;
   const amount=Number($('amount').value);
   if(!Number.isInteger(amount)||amount<1||amount>1000) {formError('请填写实际喝下的奶量（1至1000毫升整数）。');$('amount').focus();return;}
-  const selectedPerson=document.querySelector('[name="caregiver"]:checked');
-  if(!selectedPerson){formError('请为这条记录选择具体记录人。');return;}
-  const caregiver=selectedPerson.value;
-  const signature=JSON.stringify({amount,caregiver,note:$('note').value,mode:state.timeMode,offset:state.offset,date:$('fed-date').value,clock:normalizeClock($('fed-clock').value)||$('fed-clock').value});
+  const caregiver=$('caregiver-name').value.trim();
+  if(!caregiver||Array.from(caregiver).length>20){formError('请选择或填写记录人，称呼为1至20字。');$('caregiver-name').focus();return;}
+  const rememberCaregiver=!$('remember-caregiver-label').classList.contains('hidden')&&$('remember-caregiver').checked;
+  const signature=JSON.stringify({amount,caregiver,rememberCaregiver,note:$('note').value,mode:state.timeMode,offset:state.offset,date:$('fed-date').value,clock:normalizeClock($('fed-clock').value)||$('fed-clock').value});
   // Freeze the timestamp as well as the request ID after the first attempt so
   // retrying an uncertain network response cannot create a second feeding.
   const fed=state.pending?.signature===signature?state.pending.fed:selectedTime();
   if(!fed||!Number.isFinite(Date.parse(fed))) {formError('请输入有效时间，例如1730代表17:30。');$('manual-time').open=true;return;}
   if(Date.parse(fed)>Date.now()+300000) {formError('喝奶时间不能是未来时间，请检查一下。');return;}
-  const payload={amount_ml:amount,fed_at:fed,caregiver,note:$('note').value};
+  const payload={amount_ml:amount,fed_at:fed,caregiver,remember_caregiver:rememberCaregiver,note:$('note').value};
   if(state.editing)payload.version=state.editing.version;
   if(!state.pending||state.pending.signature!==signature)state.pending={signature,id:uid(),fed};
   payload.request_id=state.pending.id;
@@ -252,6 +296,18 @@ async function share() {
   catch(error){toast(error.message);}
 }
 $('settings-button').addEventListener('click',async()=>{try{openSettings(await api('/api/settings'));}catch(error){toast(error.message);}});
+$('caregivers-button').addEventListener('click',openCaregivers);$('manage-caregivers').addEventListener('click',openCaregivers);
+$('caregiver-name').addEventListener('input',()=>{state.pending=null;renderCaregiverChoices();});
+$('caregivers-form').addEventListener('submit',saveCaregivers);
+$('add-caregiver').addEventListener('click',()=>{
+  const name=$('new-caregiver').value.trim(),names=[...document.querySelectorAll('#caregiver-rows input')].map(input=>input.value.trim());
+  if(!name||Array.from(name).length>20){caregiverError('请填写1至20字的称呼。');return;}
+  if(names.includes(name)||names.length>=12){caregiverError(names.includes(name)?'这个称呼已在名单里。':'常用名单最多12位。');return;}
+  caregiverRow(name);$('new-caregiver').value='';$('caregivers-error').classList.add('hidden');
+});
+$('new-caregiver').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('add-caregiver').click();}});
+$('caregivers-dismiss').addEventListener('click',()=>{if(!state.savingCaregivers)$('caregivers-dialog').close();});
+$('caregivers-dialog').addEventListener('cancel',event=>{if(state.savingCaregivers)event.preventDefault();});
 $('baby-name').addEventListener('input',()=>{$('name-preview').textContent=babyTitle($('baby-name').value.trim());});
 $('settings-form').addEventListener('submit',event=>{event.preventDefault();saveSettings($('baby-name').value);});
 $('settings-skip').addEventListener('click',()=>saveSettings(''));

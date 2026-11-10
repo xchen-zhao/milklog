@@ -58,7 +58,44 @@ class Store:
                   id INTEGER PRIMARY KEY CHECK(id=1), baby_name TEXT NOT NULL,
                   setup_complete INTEGER NOT NULL, version INTEGER NOT NULL);
                 INSERT OR IGNORE INTO settings VALUES (1,'',0,1);
+                CREATE TABLE IF NOT EXISTS caregiver_settings (
+                  id INTEGER PRIMARY KEY CHECK(id=1), names_json TEXT NOT NULL,
+                  version INTEGER NOT NULL);
+                INSERT OR IGNORE INTO caregiver_settings VALUES (1,'["妈妈","姥姥","爸爸"]',1);
             ''')
+
+    @staticmethod
+    def caregiver_name(value):
+        if not isinstance(value, str) or not value.strip() or len(value.strip()) > 20 or any(ord(ch) < 32 or ord(ch) == 127 for ch in value):
+            raise Problem(422, 'INVALID_CAREGIVER', '记录人请填写1至20字，不要包含换行或控制字符')
+        return value.strip()
+
+    def caregivers(self):
+        with closing(self.connect()) as c:
+            row = c.execute('SELECT names_json,version FROM caregiver_settings WHERE id=1').fetchone()
+        return dict(names=json.loads(row['names_json']), version=row['version'])
+
+    def save_caregivers(self, payload):
+        values = payload.get('names')
+        if not isinstance(values, list) or not 1 <= len(values) <= 12:
+            raise Problem(422, 'INVALID_CAREGIVERS', '常用记录人请保留1至12位')
+        names = [self.caregiver_name(value) for value in values]
+        if len(names) != len(set(names)):
+            raise Problem(422, 'DUPLICATE_CAREGIVER', '常用记录人不能重复')
+        version = payload.get('version')
+        if type(version) is not int:
+            raise Problem(422, 'INVALID_VERSION', '请重新打开记录人设置后重试')
+        with closing(self.connect()) as c:
+            with c:
+                result = c.execute('UPDATE caregiver_settings SET names_json=?,version=version+1 WHERE id=1 AND version=?',
+                                   (json.dumps(names, ensure_ascii=False), version))
+                if not result.rowcount:
+                    raise Problem(409, 'CAREGIVERS_CONFLICT', '家人已修改常用名单，请重新打开后修改')
+        try:
+            self.backup()
+        except (OSError, sqlite3.Error):
+            pass
+        return dict(names=names, version=version+1)
 
     def settings(self):
         with closing(self.connect()) as c:
@@ -108,9 +145,7 @@ class Store:
                 raise ValueError()
         except (ValueError, TypeError):
             raise Problem(422, 'INVALID_TIME', '请检查喂奶时间，不能填写未来时间')
-        caregiver, note = payload.get('caregiver', '爸爸'), payload.get('note', '')
-        if caregiver not in ('妈妈', '姥姥', '爸爸', '家人'):
-            raise Problem(422, 'INVALID_CAREGIVER', '请选择记录人')
+        caregiver, note = Store.caregiver_name(payload.get('caregiver', '爸爸')), payload.get('note', '')
         if not isinstance(note, str) or len(note) > 200:
             raise Problem(422, 'INVALID_NOTE', '备注请控制在200字以内')
         return dict(amount_ml=amount, fed_at=fed.isoformat(timespec='seconds'), caregiver=caregiver, note=note.strip())
@@ -143,7 +178,7 @@ class Store:
                 trend.append(dict(date=stamp,total_ml=row['total_ml'] if row else None,count=row['count'] if row else 0))
         return dict(date=day, records=records, total_ml=sum(r['amount_ml'] for r in records),
                     count=len(records), latest=dict(latest) if latest else None, days=days,
-                    trend=trend,trend_start=start.isoformat(),trend_end=day,server_time=now(),settings=self.settings())
+                    trend=trend,trend_start=start.isoformat(),trend_end=day,server_time=now(),settings=self.settings(),caregivers=self.caregivers())
 
     def mutate(self, action, payload, record_id=None):
         if not isinstance(payload, dict):
@@ -162,6 +197,18 @@ class Store:
                 if previous['fingerprint'] != fingerprint:
                     raise Problem(409, 'REQUEST_CONFLICT', '操作内容发生变化，请刷新后重试')
                 return json.loads(previous['result_json'])
+            remember = payload.get('remember_caregiver', False)
+            if type(remember) is not bool:
+                raise Problem(422, 'INVALID_CAREGIVER_OPTION', '请检查是否加入常用名单')
+            if remember and action in ('create', 'update'):
+                name = self.caregiver_name(payload.get('caregiver'))
+                options = c.execute('SELECT names_json FROM caregiver_settings WHERE id=1').fetchone()
+                names = json.loads(options['names_json'])
+                if name not in names:
+                    if len(names) >= 12:
+                        raise Problem(422, 'CAREGIVERS_FULL', '常用名单已满，请取消加入常用或先调整名单')
+                    names.append(name)
+                    c.execute('UPDATE caregiver_settings SET names_json=?,version=version+1 WHERE id=1', (json.dumps(names, ensure_ascii=False),))
             before = None
             if action == 'create':
                 fields = self.validate(payload)
@@ -295,6 +342,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.json(self.server.store.settings(), event='settings')
         if method == 'PUT' and path == '/api/settings':
             return self.json(self.server.store.save_settings(self.payload()), event='settings', saved=True)
+        if method == 'GET' and path == '/api/caregivers':
+            return self.json(self.server.store.caregivers(), event='caregivers')
+        if method == 'PUT' and path == '/api/caregivers':
+            return self.json(self.server.store.save_caregivers(self.payload()), event='caregivers', saved=True)
         if method == 'GET' and path == '/api/records':
             day = parse_qs(u.query).get('date', [datetime.now(CN).date().isoformat()])[0]
             return self.json(self.server.store.list_day(day), event='milk_list')
@@ -317,7 +368,7 @@ class Handler(BaseHTTPRequestHandler):
             for r in self.server.store.export():
                 def safe(value):
                     return "'" + value if value[:1] in ('=', '+', '-', '@', '\t', '\r') else value
-                writer.writerow([r['fed_at'][:10], r['fed_at'][11:16], r['amount_ml'], r['caregiver'], safe(r['note'])])
+                writer.writerow([r['fed_at'][:10], r['fed_at'][11:16], r['amount_ml'], safe(r['caregiver']), safe(r['note'])])
             return self.send(('\ufeff' + text.getvalue()).encode('utf-8'), 'text/csv; charset=utf-8',
                              headers={'Content-Disposition': 'attachment; filename="milklog.csv"; filename*=UTF-8\'\'' + quote('小奶瓶-喝奶记录.csv')})
         if method == 'GET' and path == '/api/backup':

@@ -86,8 +86,59 @@ async function main() {
     await second.reload();
     await second.locator('#settings-button').waitFor({ state: 'visible' });
     assert.equal(await second.locator('#settings-dialog').isVisible(), false);
+
+    // Recording supports a custom name and an explicit opt-in to the shared list.
+    await first.locator('.desktop-add .add-button').click();
+    await first.locator('#amount').fill('180');
+    await first.locator('#caregiver-name').fill('奶奶');
+    await first.locator('#remember-caregiver').check();
+    await first.locator('#save-button').click();
+    await first.locator('#record-dialog').waitFor({ state: 'hidden' });
+    await first.locator('#records').filter({ hasText: '奶奶记录' }).waitFor();
+    await second.locator('#refresh-button').click();
+    await second.locator('#records').filter({ hasText: '奶奶记录' }).waitFor();
+    await second.locator('#mobile-add .add-button').click();
+    await second.getByRole('radio', { name: '奶奶', exact: true }).check();
+    assert.equal(await second.locator('#caregiver-name').inputValue(), '奶奶');
+    await second.locator('#manage-caregivers').click();
+    await second.locator('#caregivers-dialog').waitFor({ state: 'visible' });
+    await second.getByRole('button', { name: '移除奶奶', exact: true }).click();
+    await second.locator('#new-caregiver').fill('爷爷');
+    await second.locator('#new-caregiver').press('Enter');
+    await second.locator('#caregivers-save').click();
+    await second.locator('#caregivers-dialog').waitFor({ state: 'hidden' });
+    assert.equal(await second.locator('#caregiver-name').inputValue(), '奶奶', 'Changing common names must preserve the current form');
+    assert.equal(await second.getByRole('radio', { name: '奶奶', exact: true }).count(), 0);
+    assert.equal(await second.getByRole('radio', { name: '爷爷', exact: true }).count(), 1);
+    assert.equal(await second.locator('#remember-caregiver').isChecked(), false);
+    await second.locator('[data-close="record-dialog"]').click();
+    await first.locator('#refresh-button').click();
+    await first.locator('#records .edit-button').click();
+    assert.equal(await first.locator('#caregiver-name').inputValue(), '奶奶', 'Historical names must survive removal from the common list');
+    await first.locator('#amount').fill('190');
+    await first.locator('#save-button').click();
+    await first.locator('#record-dialog').waitFor({ state: 'hidden' });
+    await first.locator('#records').filter({ hasText: '奶奶记录' }).waitFor();
+
+    // Two editors must recover from a stale list without overwriting each other.
+    await Promise.all([first.locator('#caregivers-button').click(), second.locator('#caregivers-button').click()]);
+    for (const page of [first, second]) await page.locator('#caregivers-dialog').waitFor({ state: 'visible' });
+    await first.locator('#new-caregiver').fill('阿姨');
+    await first.locator('#add-caregiver').click();
+    await first.locator('#caregivers-save').click();
+    await first.locator('#caregivers-dialog').waitFor({ state: 'hidden' });
+    await second.locator('#caregivers-save').click();
+    await second.locator('#caregivers-error').filter({ hasText: '已加载最新设置' }).waitFor();
+    assert.equal(await second.getByRole('button', { name: '移除阿姨', exact: true }).count(), 1);
+    await second.locator('#caregivers-dismiss').click();
+    await second.locator('#caregivers-dialog').waitFor({ state: 'hidden' });
+    await second.locator('#mobile-add .add-button').click();
+    await second.getByRole('radio', { name: '爷爷', exact: true }).check();
+    assert.equal(await second.locator('#caregiver-name').inputValue(), '爷爷');
+    assert.equal(await second.locator('#record-dialog').evaluate(node => node.scrollWidth <= node.clientWidth), true, 'Caregiver controls must fit the mobile dialog');
+    await second.locator('[data-close="record-dialog"]').click();
     assert.deepEqual(errors, []);
-    console.log('PASS: first-use skip, concurrent setup recovery, edit, persistence, family sharing, mobile layout, text safety and clearing name.');
+    console.log('PASS: nickname setup and conflicts, persistence, mobile layout, custom caregivers, shared common names, nested list management, legacy record editing and caregiver settings conflict recovery.');
   } finally {
     if (browser) await browser.close();
     if (server.exitCode === null && server.signalCode === null) server.kill();

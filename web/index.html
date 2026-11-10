@@ -50,7 +50,7 @@
     </main>
     <section id="scan-screen" class="scan-screen hidden"><span class="brand-mark">奶</span><h1>小奶瓶</h1><p>请连上家里的 Wi-Fi，<br>扫描家里的二维码打开。</p><button class="secondary" id="retry-auth">重新检查</button></section>
     <div class="mobile-add" id="mobile-add"><button class="primary add-button"><span>＋</span> 记一顿奶</button></div>
-    <footer class="app-footer"><span id="family-caption">宝宝的小日常</span><span>♡</span> 家人一起照顾<button id="settings-button" class="text-button hidden" type="button">修改昵称</button></footer>
+    <footer class="app-footer"><span id="family-caption">宝宝的小日常</span><span>♡</span> 家人一起照顾<button id="settings-button" class="text-button hidden" type="button">修改昵称</button><button id="caregivers-button" class="text-button hidden" type="button">记录人设置</button></footer>
   </div>
 
   <dialog id="settings-dialog" aria-labelledby="settings-title">
@@ -76,12 +76,28 @@
       <div class="time-heading"><span class="field-label">喝奶时间</span><span id="time-preview" aria-live="polite">刚刚</span></div>
       <div class="quick-times" role="group" aria-label="快捷选择喝奶时间"><button type="button" data-offset="0" aria-pressed="true">刚刚</button><button type="button" data-offset="5" aria-pressed="false">5分钟前</button><button type="button" data-offset="10" aria-pressed="false">10分钟前</button><button type="button" data-offset="30" aria-pressed="false">30分钟前</button></div>
       <details id="manual-time"><summary>其他时间 <span>手动补记</span></summary><div class="manual-time-fields"><label class="manual-date">日期<input id="fed-date" type="date" aria-label="喝奶日期"></label><label class="manual-clock">几点几分<input id="fed-clock" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="1730" aria-label="喝奶时间（直接输入1730）" enterkeyhint="done" aria-describedby="manual-time-hint"></label></div><p class="manual-time-hint" id="manual-time-hint">直接输入 1730，就是 17:30。点进时间框即可覆盖原值。</p></details>
-      <fieldset class="caregivers"><legend>谁记的</legend><label><input type="radio" name="caregiver" value="妈妈"><span>妈妈</span></label><label><input type="radio" name="caregiver" value="姥姥"><span>姥姥</span></label><label><input type="radio" name="caregiver" value="爸爸" checked><span>爸爸</span></label></fieldset>
+      <fieldset class="caregivers"><legend>谁记的</legend><div id="caregiver-options" class="caregiver-options"></div></fieldset>
+      <label class="sr-only" for="caregiver-name">记录人称呼</label>
+      <input id="caregiver-name" class="name-input caregiver-input" type="text" maxlength="20" autocomplete="off" placeholder="也可以直接输入，例如：奶奶、爷爷" aria-describedby="caregiver-hint">
+      <label id="remember-caregiver-label" class="remember-caregiver hidden"><input id="remember-caregiver" type="checkbox">同时加入常用名单</label>
+      <div class="caregiver-help"><span id="caregiver-hint">点选常用称呼，或直接输入，最多20字。</span><button id="manage-caregivers" class="text-button" type="button">管理常用</button></div>
       <details><summary>加一句备注 <span>选填</span></summary><label class="sr-only" for="note">备注</label><textarea id="note" maxlength="200" placeholder="比如：这顿喝得很香" rows="2"></textarea></details>
       <p id="form-error" class="form-error hidden" role="alert"></p>
       <button class="primary save-button" id="save-button" type="submit">保存这一顿</button>
       <button class="delete-button hidden" id="delete-button" type="button">删除这条记录</button>
       <p class="form-hint">只记实际喝下的奶量，记错了可以修改。</p>
+    </form>
+  </dialog>
+
+  <dialog id="caregivers-dialog" aria-labelledby="caregivers-title">
+    <form id="caregivers-form">
+      <div class="dialog-heading"><div><p class="eyebrow">按家里的称呼来</p><h2 id="caregivers-title">常用记录人</h2></div><button id="caregivers-dismiss" class="close-button" type="button" aria-label="关闭记录人设置">×</button></div>
+      <p class="settings-description">可以修改称呼、移除或添加家人。名单由家人共享，历史记录里的称呼会保留原样。</p>
+      <div id="caregiver-rows"></div>
+      <div class="caregiver-add"><label class="sr-only" for="new-caregiver">新记录人称呼</label><input id="new-caregiver" class="name-input" maxlength="20" placeholder="例如：奶奶" autocomplete="off"><button id="add-caregiver" class="secondary" type="button">添加</button></div>
+      <p class="settings-hint">常用名单保留1至12位，每个称呼最多20字。这里只调整常用选项，录入时仍可直接输入其他称呼。</p>
+      <p id="caregivers-error" class="form-error hidden" role="alert"></p>
+      <button id="caregivers-save" class="primary" type="submit">保存常用名单</button>
     </form>
   </dialog>
 
