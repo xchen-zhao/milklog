@@ -6,6 +6,43 @@ Python 后端 + 原生 HTML/CSS/JavaScript，无前端构建步骤，不依赖�
 
 当前版本：**0.1.0（早期版本）**，面向家庭局域网自部署。
 
+## 界面预览
+
+以下均为应用的**白天模式实际运行截图**，昵称“小米”和全部奶量记录均为虚构演示数据，不包含任何家庭的真实记录，也不包含访问密钥和家庭二维码。
+
+### 电脑上，一眼看清每天的记录
+
+左侧显示当日总奶量和上一次喝奶时间，右侧按时间列出每一顿。家人可以一起录入，记错后也能修改。
+
+![电脑端白天模式：奶量汇总与每顿记录](docs/screenshots/desktop-light.png)
+
+### 手机上，随手记下一顿
+
+打开即可查看当天记录，底部按钮始终方便点按。录入时可选择常用奶量、快捷补记时间和记录人。
+
+<table>
+  <tr>
+    <th>手机首页</th>
+    <th>奶量录入</th>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/mobile-light.png" alt="手机端白天模式首页，展示虚构奶量记录" width="360"></td>
+    <td align="center" valign="top"><img src="docs/screenshots/mobile-record-light.png" alt="手机端奶量录入表单，可选择奶量、时间和记录人" width="360"></td>
+  </tr>
+</table>
+
+### 用宝宝的昵称，拥有专属的小奶瓶
+
+首次使用可以填写昵称，也可以跳过。填写“小米”后，页面会变成“小米的小奶瓶”；之后可随时修改，家人的设备共享同一个设置。
+
+<p align="center"><img src="docs/screenshots/mobile-nickname-light.png" alt="宝宝昵称设置，预览为小米的小奶瓶" width="360"></p>
+
+### 从每一顿，看到近30天的变化
+
+每日曲线展示每顿实际喝下的奶量，近30天曲线展示每日总量。点按数据点可查看数值，没有记录的日期保留为空缺。
+
+<p align="center"><img src="docs/screenshots/desktop-charts-light.png" alt="虚构数据的每顿奶量曲线与近30天每日总量曲线" width="640"></p>
+
 ## 功能
 
 - 记录、补记、修改每顿奶量、时间、记录人和备注。

@@ -30,3 +30,10 @@ __pycache__/
 *.webp
 *.svg
 !web/icon.svg
+
+# Reviewed documentation screenshots: synthetic data only
+!docs/screenshots/desktop-light.png
+!docs/screenshots/desktop-charts-light.png
+!docs/screenshots/mobile-light.png
+!docs/screenshots/mobile-record-light.png
+!docs/screenshots/mobile-nickname-light.png
